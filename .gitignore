@@ -55,3 +55,15 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# TeX/LaTeX stuff
+*.aux
+*.out
+*.synctex.gz
+*_region_.prv*
+*.log
+
+# Random temporary files
+*~
+#*#
+.#*#
