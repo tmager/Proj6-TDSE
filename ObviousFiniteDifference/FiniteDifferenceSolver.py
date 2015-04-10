@@ -1,22 +1,34 @@
+"""
+ObviousFiniteDifference/FiniteDifferenceSolver.py
+
+Solver class for the simplistic (and not very good) finite-difference scheme for
+the time-dependent Schrodinger equation.
+"""
+
+
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse import dok_matrix
 import scipy.sparse.linalg as linalg
 import math
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 class FiniteDifferenceSolver:
 
     def __init__(self, dx, J, dt, N, boundaryConditions, potentialFunction):
+
+        # Formatting stuff for the plots so that they can have nice labels
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif', size=28)
+        mpl.rcParams['xtick.major.pad'] = 8
+        mpl.rcParams['ytick.major.pad'] = 8
+        mpl.rcParams['text.latex.preamble'] = r"\usepackage{xfrac}"
+
         self.dx = dx
-        # The problem is posed such that J is the last position, but from a
-        # programming standpoint that is a mess; our internal representation
-        # will say that J-1 is the last position, and just says that J our J
-        # should be 1 larger to take that into account.
-        self.J = J + 1
+        self.J = J
         self.dt = dt
-        # See note about J
-        self.N = N + 1
+        self.N = N
         self.V = potentialFunction
 
         # Find the dimensions of the matrix, which must be of the form (2^k) - 1
@@ -53,20 +65,55 @@ class FiniteDifferenceSolver:
         self.mtrx = self.mtrx.tocsc()
         self.inverse = linalg.inv(self.mtrx)
 
-        #self.initialWavepacket
+        self.initialWavepacket = np.linspace(0,1,self.dim)
 
 
     def solve(self):
-        self.solutionSteps = [self.initialWavepacket]
-        for n in range(1,N):
-            solutionSteps[n] = self.inverse*solutionSteps[n-1]
+        """
+        Iterate forward from the initial configuration of the system using the
+        matrix that was set up in __init__ to step forward in time.
+        """
+        self.solutionSteps = np.empty([self.N,self.J],dtype=complex)
+        self.solutionSteps[0] = self.initialWavepacket
+        for n in range(1,self.N):
+            self.solutionSteps[n] = self.inverse*self.solutionSteps[n-1]
+
 
     def plot(self, step):
-        positions = arange(0,self.J,self.dx)
+        """
+        Plot the wavefunction at the given timestep.
+        """
+        positions = np.arange(0,1,self.dx)
 
         plt.plot(positions, np.real(self.solutionSteps[step]),    label="Real")
         plt.plot(positions, np.imag(self.solutionSteps[step]),    label="Imag")
-        plt.plot(positions, np.absolute(self.solutionStep[step]), label="Magn")
+        plt.plot(positions, np.absolute(self.solutionSteps[step]), label="Magn")
+        plt.show()
+
+    def animPlot(self):
+        """
+        Create an animated plot of the wavefunction as it progresses forward in
+        time.
+        """
+        pass
+
+    def plot3d(self):
+        """
+        Plot the wavefunction over all timesteps using a 3D plot.
+        """
+        fig = plt.figure(figsize=(12,6))
+        magn = fig.add_subplot(1,2,1,projection='3d')
+        positions = np.arange(0,1,self.dx)
+        timesteps = np.arange(0,self.N*self.dt,self.dt)
+        X, Y = np.meshgrid(positions, timesteps)
+        #Z = self.solutionSteps[X,Y]
+        magn.plot_surface(X,Y,np.absolute(self.solutionSteps),color='g',
+                          label="|$\psi$|")
+        magn.plot_surface(X,Y,np.real(self.solutionSteps),color='b',
+                          label="real($\psi$)")
+        magn.plot_surface(X,Y,np.imag(self.solutionSteps),color='r',
+                          label="imag($\psi$)")
+        plt.show()
 
 
     # the coefficient on the (n+1),j wavefunction value [unlike the other
