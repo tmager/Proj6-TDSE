@@ -33,12 +33,17 @@ def freeParticle(x):
 
 def infiniteSquareWell(x):
     if (x > 5) or (x < -5):
-        return 9
+        return 99999999999
     else:
         return 0
 
+def triangleWell(x):
+    if (x < -3):
+        return 9999999999
+    else:
+        return x + 3
 
-potentialFunction = infiniteSquareWell
+potentialFunction = triangleWell
 
 fds = Solver.FiniteDifferenceSolver(args.gridSpacing,args.gridPoints,
                                     args.stepInterval,args.timesteps,

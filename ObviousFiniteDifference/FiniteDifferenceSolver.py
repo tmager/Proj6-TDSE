@@ -24,7 +24,7 @@ class FiniteDifferenceSolver:
 
         # Formatting stuff for the plots so that they can have nice labels
         plt.rc('text', usetex=True)
-        plt.rc('font', family='serif', size=20)
+        plt.rc('font', family='serif', size=18)
         mpl.rcParams['xtick.major.pad'] = 6
         mpl.rcParams['ytick.major.pad'] = 6
         mpl.rcParams['text.latex.preamble'] = r"\usepackage{xfrac}\usepackage{amsbsy}"
@@ -78,10 +78,23 @@ class FiniteDifferenceSolver:
         matrix that was set up in __init__ to step forward in time.
         """
         self.solutionSteps = np.zeros([self.N,self.J],dtype=complex)
+        self.probabilitySums = np.zeros(self.N,dtype=float)
         self.solutionSteps[0] = self.initialWavepacket
         for n in range(1,self.N):
             self.solutionSteps[n] = self.inverse*self.solutionSteps[n-1]
+            self.probabilitySums[n] = self.__findTotalProbability(n)
 
+
+    def __findTotalProbability(self, n):
+        """
+        Integrate the magnitude of the wavefunction over our range of positions
+        using the trapezoidal rule.
+        """
+        prob = 0
+        for i in np.arange(1,self.J):
+            prob += (np.absolute(self.solutionSteps[n,i])
+                     + np.absolute(self.solutionSteps[n,i-1])) * self.dx / 2
+        return prob
 
     def plot(self, step):
         """
@@ -110,29 +123,52 @@ class FiniteDifferenceSolver:
         time.
         """
         positions = np.arange(-self.dx*self.J/2,self.dx*self.J/2,self.dx)
-        
-        fig = plt.figure()
-        graph = fig.add_subplot(1,1,1)
+        times = np.arange(0,self.N*self.dt,self.dt)
+
+        fig = plt.figure(figsize=(20,15),dpi=80)
+        graph = fig.add_subplot(1,2,1)
+        probabilities = fig.add_subplot(1,2,2)
+
         graph.set_xlim([-self.dx*self.J/2 - 2*self.dx,
                         self.dx*self.J/2 + 2*self.dx])
         graph.set_ylim([-1,1])
-        
-        magnGraph, = graph.plot(positions,np.absolute(self.solutionSteps[0]))
-        realGraph, = graph.plot(positions,np.real(self.solutionSteps[0]))
-        imagGraph, = graph.plot(positions,np.imag(self.solutionSteps[0]))
+        graph.set_xlabel("Position")
+        graph.set_ylabel("Wavefunction Value")
+
+        probabilities.set_xlim([0,self.N*self.dt])
+        probabilities.set_ylim([0,max(self.probabilitySums)*1.05])
+        probabilities.set_xlabel("Time")
+        probabilities.set_ylabel("Integral of Wavefunction over Simulation Region")
+
+        magnGraph, = graph.plot(positions,np.absolute(self.solutionSteps[0]),
+                                label="$\\boldsymbol{|\\Psi|}$")
+        realGraph, = graph.plot(positions,np.real(self.solutionSteps[0]),
+                                label="Imag($\\boldsymbol\\Psi$)")
+        imagGraph, = graph.plot(positions,np.imag(self.solutionSteps[0]),
+                                label="Magn($\\boldsymbol\\Psi$)")
+
+        probGraph, = probabilities.plot(times,self.probabilitySums)
+        normalLine, = probabilities.plot([0,self.N*self.dt],
+                                         [1,1])
+        curTime, = probabilities.plot([0,0],
+                                      [0,max(self.probabilitySums)*1.05])
 
         def init():
             magnGraph.set_data([],[])
             realGraph.set_data([],[])
             imagGraph.set_data([],[])
-            return magnGraph,realGraph,imagGraph,
+            curTime.set_data([],[])
+            return magnGraph,realGraph,imagGraph,curTime,
 
         def animate(i):
             magnGraph.set_data(positions,np.absolute(self.solutionSteps[i]))
             realGraph.set_data(positions,np.real(self.solutionSteps[i]))
             imagGraph.set_data(positions,np.imag(self.solutionSteps[i]))
-            return magnGraph,realGraph,imagGraph,
+            curTime.set_data([i*self.dt,i*self.dt],
+                             [0,max(self.probabilitySums)*1.05])
+            return magnGraph,realGraph,imagGraph,curTime,
 
+        graph.legend()
         ani = anim.FuncAnimation(fig, animate, np.arange(0, self.N),
                                  init_func=init,interval=25, blit=True)
         #ani.save('animExportTest.mp4', fps=30)
@@ -175,7 +211,8 @@ class FiniteDifferenceSolver:
 
     def __wavefunction(self, x, exponent):
         exponentFxn = lambda x: math.exp(-exponent*x**2)**2
-        normCoef = integrate.quad(exponentFxn,-50,50)[0]
+        normCoef = integrate.quad(exponentFxn,
+                                  -self.dx*self.J/2,self.dx*self.J/2)[0]
         return exponentFxn(x)/normCoef
 
     def __discretizedWavefunction(self):
