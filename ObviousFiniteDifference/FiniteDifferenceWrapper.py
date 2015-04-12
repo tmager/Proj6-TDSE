@@ -21,26 +21,28 @@ parser.add_argument("stepInterval",
                     type=float)
 parser.add_argument("gridPoints",
                     type=int)
+parser.add_argument("gridSpacing",
+                    type=float)
 parser.add_argument("boundaryConditions",
                      choices=["zero", "periodic"])
 
 args = parser.parse_args()
 
-def V(x):
+def freeParticle(x):
     return 0
 
+def infiniteSquareWell(x):
+    if (x > 5) or (x < -5):
+        return 9
+    else:
+        return 0
 
-dx = .1
-J = 1000
-dt = .1
-N = 1000
-boundaryConditions = "periodic"
 
-potentialFunction = V
+potentialFunction = infiniteSquareWell
 
-fds = Solver.FiniteDifferenceSolver(1./args.gridPoints,args.gridPoints,
+fds = Solver.FiniteDifferenceSolver(args.gridSpacing,args.gridPoints,
                                     args.stepInterval,args.timesteps,
                                     args.boundaryConditions,
                                     potentialFunction)
 fds.solve()
-fds.plot3d()
+fds.animPlot()
